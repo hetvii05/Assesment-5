@@ -1,0 +1,100 @@
+1. Creating the Tables
+
+First, we will create the Bank, Loan, and Account_holder tables.
+
+sql
+CREATE TABLE Bank (
+    branch_id INT PRIMARY KEY,
+    branch_name VARCHAR(100),
+    branch_city VARCHAR(100)
+);
+
+CREATE TABLE Loan (
+    loan_no INT PRIMARY KEY,
+    branch_id INT,
+    account_holder_id INT,
+    loan_amount DECIMAL(15, 2),
+    loan_type VARCHAR(50),
+    FOREIGN KEY (branch_id) REFERENCES Bank(branch_id),
+    FOREIGN KEY (account_holder_id) REFERENCES Account_holder(account_holder_id)
+);
+
+CREATE TABLE Account_holder (
+    account_holder_id INT PRIMARY KEY,
+    account_no VARCHAR(50),
+    account_holder_name VARCHAR(100),
+    city VARCHAR(100),
+    contact VARCHAR(15),
+    date_of_account_created DATE,
+    account_status VARCHAR(20),
+    account_type VARCHAR(50),
+    balance DECIMAL(15, 2)
+);
+
+
+2. Intra-Bank Transfer Transaction
+
+Assuming we have accounts A and B with their account numbers and the amount to transfer is $100.
+
+sql
+BEGIN TRANSACTION;
+
+-- Deduct $100 from account A
+UPDATE Account_holder
+SET balance = balance - 100
+WHERE account_no = 'Account_A';
+
+-- Add $100 to account B
+UPDATE Account_holder
+SET balance = balance + 100
+WHERE account_no = 'Account_B';
+
+-- Check if balances are not negative (optional safety check)
+IF EXISTS (
+    SELECT 1
+    FROM Account_holder
+    WHERE (account_no = 'Account_A' AND balance < 0)
+       OR (account_no = 'Account_B' AND balance < 0)
+)
+BEGIN
+    ROLLBACK;
+    PRINT 'Transaction failed due to insufficient funds.';
+END
+ELSE
+BEGIN
+    COMMIT;
+    PRINT 'Transaction successful.';
+END;
+
+
+3. Fetch Account Holders from the Same City
+
+sql
+SELECT *
+FROM Account_holder a1
+WHERE EXISTS (
+    SELECT 1
+    FROM Account_holder a2
+    WHERE a2.city = a1.city
+      AND a2.account_holder_id <> a1.account_holder_id
+);
+
+
+4. Fetch Accounts Created After the 15th of Any Month
+
+sql
+SELECT account_no, account_holder_name
+FROM Account_holder
+WHERE DAY(date_of_account_created) > 15;
+
+ 5. Display City Name and Count of Branches in that City
+
+sql
+SELECT branch_city, COUNT(branch_id) AS Count_Branch
+FROM Bank
+GROUP BY branch_city;
+6. Display Account Holders with Loans
+sql
+SELECT ah.account_holder_id, ah.account_holder_name, l.branch_id, l.loan_amount
+FROM Account_holder ah
+JOIN Loan l ON ah.account_holder_id = l.account_holder_id;
